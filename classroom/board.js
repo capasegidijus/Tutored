@@ -5,7 +5,7 @@
   const KEY = 'classroom-board.v1';
   const today = () => new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
   const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const freshBoard = () => ({ id: uid(), date: '', subject: '', writing: '', dateManual: false, sizes: ['', '', ''], strokes: [], shapes: [], boxes: [], background: 'plain' });
+  const freshBoard = () => ({ id: uid(), date: '', subject: '', writing: '', dateManual: false, sizes: ['', '', ''], strokes: [], shapes: [], boxes: [], activities: [], background: 'plain' });
   let boards = [], currentId = '', previous = null, active = $('writing'), selection = null;
   let mode = 'text', drawColor = '#202124', drawWidth = 6, activeStroke = null, activeShape = null, deleteTarget = '';
   let selectedBox = '', selectedShape = '', dragAction = null;
@@ -47,10 +47,24 @@
     if (!source || typeof source !== 'object') return null;
     return { id: typeof source.id === 'string' ? source.id : uid(), html: clean(source.html), x: Math.max(0, Math.min(.98, Number(source.x) || 0)), y: Math.max(0, Math.min(.98, Number(source.y) || 0)), w: Math.max(.08, Math.min(1, Number(source.w) || .28)), h: Math.max(.06, Math.min(1, Number(source.h) || .2)) };
   }
+  function normalizeActivity(source) {
+    if (!source || !['words', 'sorting', 'numberline', 'random', 'fraction'].includes(source.type)) return null;
+    const n = (v, fallback, min = 0, max = 1) => Number.isFinite(Number(v)) ? Math.max(min, Math.min(max, Number(v))) : fallback;
+    const a = { id: typeof source.id === 'string' ? source.id : uid(), type: source.type, x: n(source.x, .08), y: n(source.y, .12), w: n(source.w, .55, .2, .9), h: n(source.h, .3, .12, .8) };
+    if (source.type === 'words') a.items = (Array.isArray(source.items) ? source.items : []).slice(0, 60).map((it, i) => ({ id: typeof it.id === 'string' ? it.id : uid(), text: String(it.text || '').slice(0, 120), x: n(it.x, .03 + (i % 4) * .23), y: n(it.y, .16 + Math.floor(i / 4) * .23) }));
+    if (source.type === 'sorting') {
+      a.categories = (Array.isArray(source.categories) ? source.categories : []).slice(0, 8).map(v => String(v).slice(0, 40));
+      a.items = (Array.isArray(source.items) ? source.items : []).slice(0, 60).map((it, i) => ({ id: typeof it.id === 'string' ? it.id : uid(), text: String(it.text || '').slice(0, 100), category: Number.isInteger(it.category) && it.category >= 0 && it.category < a.categories.length ? it.category : -1, x: n(it.x, .02 + (i % 5) * .18), y: n(it.y, .6 + Math.floor(i / 5) * .12) }));
+    }
+    if (source.type === 'numberline') { a.min = n(source.min, 0, -10000, 10000); a.max = n(source.max, 20, -10000, 10000); a.step = n(source.step, 1, .001, 10000); a.marker = Math.round(n(source.marker, 0, 0, Math.max(0, (a.max - a.min) / a.step))); a.labels = source.labels !== false; }
+    if (source.type === 'random') { a.min = Math.round(n(source.min, 1, -1000000, 1000000)); a.max = Math.round(n(source.max, 100, -1000000, 1000000)); a.two = Boolean(source.two); a.result = Array.isArray(source.result) ? source.result.slice(0, 2).map(v => Math.round(n(v, a.min, -1000000, 1000000))) : [a.min]; }
+    if (source.type === 'fraction') { a.denominator = [2, 3, 4, 5, 6, 8, 10].includes(source.denominator) ? source.denominator : 4; a.shaded = Array.isArray(source.shaded) ? Array.from({ length: a.denominator }, (_, i) => Boolean(source.shaded[i])) : Array(a.denominator).fill(false); }
+    return a;
+  }
   function capture(board = current()) {
     if (!board) return null;
     if (board.id === currentId) saveCurrent();
-    return { date: board.date, subject: board.subject, writing: board.writing, dateManual: board.dateManual, sizes: board.sizes.slice(), strokes: structuredClone(board.strokes), shapes: structuredClone(board.shapes), boxes: structuredClone(board.boxes), background: board.background };
+    return { date: board.date, subject: board.subject, writing: board.writing, dateManual: board.dateManual, sizes: board.sizes.slice(), strokes: structuredClone(board.strokes), shapes: structuredClone(board.shapes), boxes: structuredClone(board.boxes), activities: structuredClone(board.activities || []), background: board.background };
   }
   function setSnapshot(board, data) {
     board.date = clean(data.date); board.subject = clean(data.subject); board.writing = clean(data.writing);
@@ -59,6 +73,7 @@
     board.strokes = Array.isArray(data.strokes) ? data.strokes.map(normalizedStroke).filter(Boolean) : [];
     board.shapes = Array.isArray(data.shapes) ? data.shapes.map(normalizeShape).filter(Boolean) : [];
     board.boxes = Array.isArray(data.boxes) ? data.boxes.map(normalizeBox).filter(Boolean) : [];
+    board.activities = Array.isArray(data.activities) ? data.activities.map(normalizeActivity).filter(Boolean) : [];
     board.background = ['plain', 'lines', 'grid', 'dots'].includes(data.background) ? data.background : 'plain';
   }
   function saveCurrent() {
@@ -69,7 +84,7 @@
   }
   function save() {
     saveCurrent();
-    try { localStorage.setItem(KEY, JSON.stringify({ version: 3, boards, currentId, previous, timer, timerHidden, timerSound: $('timer-sound').checked })); status('Saved in this browser'); }
+    try { localStorage.setItem(KEY, JSON.stringify({ version: 4, boards, currentId, previous, timer, timerHidden, timerSound: $('timer-sound').checked })); status('Saved in this browser'); }
     catch (_) { status('Saving unavailable — keep this tab open', true); }
     $('restore').disabled = !previous;
     $('undo').disabled = !undoStack.some(item => item.boardId === currentId);
@@ -130,7 +145,7 @@
     if (!layer) return;
     const currentNodes = new Map([...layer.querySelectorAll('.text-box')].map(el => [el.dataset.id, el]));
     const data = current()?.boxes || [];
-    if (data.length !== currentNodes.size || data.some(item => !currentNodes.has(item.id))) { layer.replaceChildren(); data.forEach(box => boxNode(box)); }
+    if (data.length !== currentNodes.size || data.some(item => !currentNodes.has(item.id))) { layer.querySelectorAll('.text-box,.shape-selection').forEach(node => node.remove()); data.forEach(box => boxNode(box)); }
     for (const box of data) {
       const el = layer.querySelector(`[data-id="${CSS.escape(box.id)}"]`); if (!el) continue;
       el.style.left = `${box.x * 100}%`; el.style.top = `${box.y * 100}%`; el.style.width = `${box.w * 100}%`; el.style.height = `${box.h * 100}%`;
@@ -138,6 +153,111 @@
     }
     updateSelection();
   }
+  function addText(parent, tag, className, value) { const node = document.createElement(tag); if (className) node.className = className; node.textContent = value; parent.append(node); return node; }
+  function renderActivities() {
+    layer.querySelectorAll('.activity').forEach(node => node.remove());
+    for (const raw of current()?.activities || []) {
+      const a = normalizeActivity(raw); if (!a) continue;
+      const el = document.createElement('section'); el.className = `activity activity-${a.type}`; el.dataset.activityId = a.id;
+      el.style.left = `${a.x * 100}%`; el.style.top = `${a.y * 100}%`;
+      const head = document.createElement('header'); head.className = 'activity-titlebar'; head.dataset.moveHandle = 'true'; addText(head, 'strong', 'activity-title', ({ words:'Movable Words', sorting:'Sorting', numberline:'Number Line', random:'Random Numbers', fraction:'Fraction Bars' })[a.type]);
+      const remove = addText(head, 'button', 'activity-remove', '×'); remove.type = 'button'; remove.setAttribute('aria-label', 'Remove activity'); remove.title = 'Remove activity'; el.append(head);
+      if (a.type === 'words') {
+        const tray = document.createElement('div'); tray.className = 'word-tray'; tray.style.height = `${Math.max(120, Math.ceil(a.items.length / 4) * 50)}px`;
+        a.items.forEach(item => { const card = addText(tray, 'button', 'word-card', item.text); card.type = 'button'; card.dataset.itemId = item.id; card.style.left = `${item.x * 100}%`; card.style.top = `${item.y * 100}%`; const del = addText(card, 'span', 'card-remove', '×'); del.setAttribute('aria-label', 'Delete word'); }); el.append(tray);
+        const shuffle = addText(el, 'button', 'activity-action', 'Shuffle'); shuffle.type = 'button'; shuffle.dataset.action = 'shuffle';
+      }
+      if (a.type === 'sorting') {
+        const sortArea = document.createElement('div'); sortArea.className = 'sort-area'; sortArea.style.setProperty('--sort-cols', a.categories.length);
+        a.categories.forEach((name, index) => { const lane = addText(sortArea, 'div', 'sort-lane', name); lane.dataset.category = String(index); });
+        const cards = document.createElement('div'); cards.className = 'sort-cards'; a.items.forEach(item => { const card = addText(cards, 'button', 'sort-card', item.text); card.type = 'button'; card.dataset.itemId = item.id; card.style.left = `${item.x * 100}%`; card.style.top = `${item.y * 100}%`; }); el.append(sortArea, cards);
+        const reset = addText(el, 'button', 'activity-action', 'Reset'); reset.type = 'button'; reset.dataset.action = 'reset';
+      }
+      if (a.type === 'numberline') {
+        const total = Math.round((a.max - a.min) / a.step), line = document.createElement('div'); line.className = 'number-track'; line.dataset.activityId = a.id;
+        for (let i = 0; i <= total; i++) { const tick = document.createElement('i'); tick.className = 'number-tick'; tick.style.left = `${total ? i / total * 100 : 0}%`; line.append(tick); if (a.labels) { const label = addText(line, 'span', 'number-label', String(a.min + i * a.step)); label.style.left = `${total ? i / total * 100 : 0}%`; } }
+        const marker = addText(line, 'button', 'number-marker', String(a.min + a.marker * a.step)); marker.type = 'button'; marker.dataset.marker = 'true'; marker.style.left = `${total ? a.marker / total * 100 : 0}%`; marker.setAttribute('aria-label', `Marker at ${a.min + a.marker * a.step}`); el.append(line);
+        const foot = document.createElement('footer'); addText(foot, 'span', 'number-range', `${a.min} to ${a.max} · every ${a.step}`); const toggle = addText(foot, 'button', 'activity-action', a.labels ? 'Hide labels' : 'Show labels'); toggle.type = 'button'; toggle.dataset.action = 'labels'; el.append(foot);
+      }
+      if (a.type === 'random') {
+        const bounds = addText(el, 'p', 'random-bounds', `From ${a.min} to ${a.max}${a.two ? ' · two numbers' : ''}`); bounds.setAttribute('aria-label','Selected number range');
+        const results = addText(el, 'div', 'random-results', ''); a.result.forEach(value => addText(results, 'strong', '', String(value)));
+        const generate = addText(el, 'button', 'activity-action', 'Generate'); generate.type = 'button'; generate.dataset.action = 'generate';
+      }
+      if (a.type === 'fraction') {
+        const bar = document.createElement('div'); bar.className = 'fraction-bar';
+        a.shaded.forEach((shaded, index) => { const cell = addText(bar, 'button', `fraction-cell${shaded ? ' shaded' : ''}`, ''); cell.type = 'button'; cell.dataset.cell = String(index); cell.setAttribute('aria-label', `${shaded ? 'Unshade' : 'Shade'} part ${index + 1} of ${a.denominator}`); });
+        addText(el, 'div', 'fraction-count', `${a.shaded.filter(Boolean).length}/${a.denominator}`); el.append(bar);
+      }
+      remove.addEventListener('click', event => { event.stopPropagation(); historyPush(); current().activities = current().activities.filter(item => item.id !== a.id); renderActivities(); save(); lastSnapshot = capture(); });
+      el.addEventListener('pointerdown', event => {
+        if (mode === 'pen' || mode === 'highlight' || mode === 'eraser' || mode === 'shape' || event.target.closest('.activity-remove,.card-remove')) return;
+        const card = event.target.closest('.word-card,.sort-card');
+        const track = event.target.closest('.number-track');
+        if (card) {
+          event.preventDefault(); event.stopPropagation(); const item = a.items.find(row => row.id === card.dataset.itemId); if (!item) return;
+          historyPush(); dragAction = { type: 'activity-card', id: a.id, itemId: item.id, start: { x: event.clientX, y: event.clientY }, before: { x: item.x, y: item.y }, size: { w: card.parentElement.clientWidth, h: card.parentElement.clientHeight } }; card.setPointerCapture?.(event.pointerId); return;
+        }
+        if (track) {
+          event.preventDefault(); event.stopPropagation(); const rect = track.getBoundingClientRect(), total = Math.round((a.max - a.min) / a.step); historyPush(); a.marker = Math.max(0, Math.min(total, Math.round((event.clientX - rect.left) / rect.width * total))); const marker = track.querySelector('.number-marker'); marker.style.left = `${total ? a.marker / total * 100 : 0}%`; marker.textContent = String(a.min + a.marker * a.step); marker.setAttribute('aria-label', `Marker at ${marker.textContent}`); dragAction = { type: 'activity-marker', id: a.id, total }; track.setPointerCapture?.(event.pointerId); save(); return;
+        }
+        if (event.target.closest('[data-move-handle]')) {
+          event.preventDefault(); event.stopPropagation(); historyPush(); dragAction = { type: 'activity-move', id: a.id, start: { x: event.clientX, y: event.clientY }, before: { x: a.x, y: a.y } }; head.setPointerCapture?.(event.pointerId);
+        }
+      });
+      el.addEventListener('click', event => {
+        const itemDelete = event.target.closest('.card-remove'); if (itemDelete) { const card = itemDelete.closest('.word-card'); historyPush(); a.items = a.items.filter(item => item.id !== card.dataset.itemId); renderActivities(); save(); lastSnapshot = capture(); return; }
+        const action = event.target.closest('[data-action]')?.dataset.action;
+        if (action === 'shuffle') { historyPush(); a.items.forEach(item => { item.x = Math.random() * .78; item.y = Math.random() * .72; }); renderActivities(); save(); lastSnapshot = capture(); }
+        if (action === 'reset') { historyPush(); a.items.forEach((item, i) => { item.category = -1; item.x = .02 + (i % 5) * .19; item.y = Math.min(.95, .78 + Math.floor(i / 5) * .11); }); renderActivities(); save(); lastSnapshot = capture(); }
+        if (action === 'labels') { historyPush(); a.labels = !a.labels; renderActivities(); save(); lastSnapshot = capture(); }
+        if (action === 'generate') { historyPush(); a.result = Array.from({ length: a.two ? 2 : 1 }, () => Math.floor(Math.random() * (a.max - a.min + 1)) + a.min); renderActivities(); save(); lastSnapshot = capture(); }
+        if (event.target.matches('.fraction-cell')) { historyPush(); const i = Number(event.target.dataset.cell); a.shaded[i] = !a.shaded[i]; renderActivities(); save(); lastSnapshot = capture(); }
+      });
+      layer.append(el);
+    }
+  }
+  const activityDialog = $('activity-dialog'); let activityType = '';
+  function openActivityForm(type) {
+    activityType = type; $('activity-error').textContent = ''; $('activity-title').textContent = ({words:'Movable Words',sorting:'Sorting',numberline:'Number Line',random:'Random Numbers',fraction:'Fraction Bars'})[type];
+    const fieldsBox = $('activity-fields');
+    const input = (id, label, value, attrs = '') => `<label class="activity-field">${label}<input id="${id}" value="${value}" ${attrs}></label>`;
+    if (type === 'words') fieldsBox.innerHTML = `<label class="activity-field">Words or sentence<textarea id="activity-text" rows="3" placeholder="The little boy walked to school."></textarea></label><label class="activity-field">Cards<select id="activity-split"><option value="word">One card per word</option><option value="sentence">One card per sentence</option></select></label>`;
+    if (type === 'sorting') fieldsBox.innerHTML = `<label class="activity-field">Categories (separate with commas)<input id="activity-categories" value="Nouns, Verbs, Adjectives"></label><label class="activity-field">Words or phrases (separate with commas)<textarea id="activity-items" rows="3" placeholder="beautiful, school, jump"></textarea></label>`;
+    if (type === 'numberline') fieldsBox.innerHTML = input('activity-min','Minimum','0','type="number"')+input('activity-max','Maximum','20','type="number"')+input('activity-step','Interval','1','type="number" min="0.001" step="any"')+`<label class="activity-field inline"><input id="activity-labels" type="checkbox" checked> Show number labels</label>`;
+    if (type === 'random') fieldsBox.innerHTML = input('activity-min','Minimum','1','type="number"')+input('activity-max','Maximum','100','type="number"')+`<label class="activity-field inline"><input id="activity-two" type="checkbox"> Generate two numbers</label>`;
+    if (type === 'fraction') fieldsBox.innerHTML = `<label class="activity-field">Equal parts<select id="activity-denominator">${[2,3,4,5,6,8,10].map(n=>`<option value="${n}" ${n===4?'selected':''}>${n} equal parts</option>`).join('')}</select></label>`;
+    activityDialog.showModal();
+  }
+  $('activity-cancel').addEventListener('click', () => activityDialog.close());
+  document.querySelectorAll('[data-activity]').forEach(button => button.addEventListener('click', () => { $('activities-menu').open = false; openActivityForm(button.dataset.activity); }));
+  $('activity-form').addEventListener('submit', event => {
+    event.preventDefault(); $('activity-error').textContent = '';
+    const activities = current().activities, a = { id: uid(), type: activityType, x: .08 + Math.min(.12, activities.length * .025), y: .12 + Math.min(.18, activities.length * .035), w: .55, h: .3 };
+    const csv = value => value.split(',').map(item => item.trim()).filter(Boolean);
+    if (activityType === 'words') {
+      const value = $('activity-text').value.trim(); if (!value) { $('activity-error').textContent = 'Enter a word or sentence first.'; return; }
+      const entries = $('activity-split').value === 'sentence' ? value.split(/[.!?]+/).map(s => s.trim()).filter(Boolean) : value.split(/\s+/).filter(Boolean);
+      const rows = Math.max(1, Math.ceil(entries.length / 4)); a.items = entries.map((text, i) => ({ id: uid(), text, x: .02 + (i % 4) * .24, y: Math.min(.92, .02 + Math.floor(i / 4) * .96 / rows) }));
+    }
+    if (activityType === 'sorting') {
+      a.categories = csv($('activity-categories').value).slice(0, 8); const items = csv($('activity-items').value).slice(0, 60);
+      if (a.categories.length < 2 || !items.length) { $('activity-error').textContent = 'Add at least two categories and one card.'; return; }
+      a.type = 'sorting'; a.items = items.map((text, i) => ({ id: uid(), text, category: -1, x: .02 + (i % 5) * .19, y: Math.min(.95, .78 + Math.floor(i / 5) * .11) }));
+    }
+    if (activityType === 'numberline') {
+      a.min = Number($('activity-min').value); a.max = Number($('activity-max').value); a.step = Number($('activity-step').value); a.labels = $('activity-labels').checked; a.marker = 0;
+      const count = (a.max - a.min) / a.step;
+      if (![a.min,a.max,a.step].every(Number.isFinite) || a.max <= a.min || a.step <= 0 || Math.abs(count - Math.round(count)) > 1e-8 || count > 40) { $('activity-error').textContent = 'Use a larger maximum than minimum, an interval that fits exactly, and no more than 40 steps.'; return; }
+    }
+    if (activityType === 'random') {
+      a.min = Number($('activity-min').value); a.max = Number($('activity-max').value); a.two = $('activity-two').checked;
+      if (![a.min,a.max].every(Number.isSafeInteger) || a.max < a.min) { $('activity-error').textContent = 'Enter whole numbers and make sure the maximum is at least the minimum.'; return; }
+      a.result = Array.from({ length: a.two ? 2 : 1 }, () => Math.floor(Math.random() * (a.max - a.min + 1)) + a.min);
+    }
+    if (activityType === 'fraction') { a.denominator = Number($('activity-denominator').value); a.shaded = Array(a.denominator).fill(false); }
+    historyPush(); activities.push(normalizeActivity(a)); renderActivities(); save(); lastSnapshot = capture(); activityDialog.close();
+  });
   function updateSelection() {
     layer.querySelectorAll('.text-box').forEach(el => el.classList.toggle('selected', el.dataset.id === selectedBox));
     let outline = layer.querySelector('.shape-selection');
@@ -175,7 +295,7 @@
     fields.forEach((field, i) => { field.innerHTML = clean(board[field.id]); field.style.fontSize = board.sizes[i] || ''; });
     if (!board.dateManual) $('date').textContent = today();
     $('board').className = `background-${board.background}`; $('background').value = board.background;
-    selection = null; active = $('writing'); selectedBox = ''; selectedShape = ''; renderBoxes(); renderCanvas(); renderTabs(); lastSnapshot = capture(); save();
+    selection = null; active = $('writing'); selectedBox = ''; selectedShape = ''; renderBoxes(); renderActivities(); renderCanvas(); renderTabs(); lastSnapshot = capture(); save();
   }
   function makeBlankBoard() { const board = freshBoard(); board.date = today(); return board; }
   function finishTyping() { clearTimeout(typingTimer); typingTimer = 0; if (typingBefore) historyPush(typingBefore); typingBefore = null; lastSnapshot = capture(); save(); }
@@ -193,7 +313,7 @@
     const board = current(); fields.forEach((field, i) => { field.innerHTML = clean(board[field.id]); field.style.fontSize = board.sizes[i] || ''; });
     if (!board.dateManual) $('date').textContent = today();
     $('board').className = `background-${board.background}`; $('background').value = board.background;
-    renderTabs(); renderBoxes(); renderCanvas(); lastSnapshot = capture();
+    renderTabs(); renderBoxes(); renderActivities(); renderCanvas(); lastSnapshot = capture();
   }
   loadActive();
   function remember() {
@@ -272,7 +392,20 @@
   });
   layer.addEventListener('pointermove', event => {
     if (!dragAction) return; const rect = $('board').getBoundingClientRect(), dx = (event.clientX - (canvas.getBoundingClientRect().left + dragAction.start.x)) / rect.width, dy = (event.clientY - (canvas.getBoundingClientRect().top + dragAction.start.y)) / rect.height;
-    if (dragAction.type === 'box') {
+    if (dragAction.type === 'activity-move') {
+      const a = current().activities.find(item => item.id === dragAction.id); if (!a) return;
+      a.x = Math.max(0, Math.min(.96, dragAction.before.x + (event.clientX - dragAction.start.x) / rect.width)); a.y = Math.max(0, Math.min(.92, dragAction.before.y + (event.clientY - dragAction.start.y) / rect.height));
+      const el = layer.querySelector(`[data-activity-id="${CSS.escape(a.id)}"]`); if (el) { el.style.left = `${a.x * 100}%`; el.style.top = `${a.y * 100}%`; }
+    } else if (dragAction.type === 'activity-card') {
+      const a = current().activities.find(item => item.id === dragAction.id), item = a?.items.find(row => row.id === dragAction.itemId); if (!item) return;
+      const parent = layer.querySelector(`[data-activity-id="${CSS.escape(a.id)}"]`), w = parent.clientWidth, h = parent.clientHeight;
+      item.x = Math.max(0, Math.min(.94, dragAction.before.x + (event.clientX - dragAction.start.x) / w)); item.y = Math.max(0, Math.min(.94, dragAction.before.y + (event.clientY - dragAction.start.y) / h));
+      const card = parent.querySelector(`[data-item-id="${CSS.escape(item.id)}"]`); if (card) { card.style.left = `${item.x * 100}%`; card.style.top = `${item.y * 100}%`; }
+    } else if (dragAction.type === 'activity-marker') {
+      const a = current().activities.find(item => item.id === dragAction.id), track = layer.querySelector(`.number-track[data-activity-id="${CSS.escape(dragAction.id)}"]`); if (!a || !track) return;
+      const bounds = track.getBoundingClientRect(); a.marker = Math.max(0, Math.min(dragAction.total, Math.round((event.clientX - bounds.left) / bounds.width * dragAction.total)));
+      const marker = track.querySelector('.number-marker'); marker.style.left = `${dragAction.total ? a.marker / dragAction.total * 100 : 0}%`; marker.textContent = String(a.min + a.marker * a.step); marker.setAttribute('aria-label', `Marker at ${marker.textContent}`);
+    } else if (dragAction.type === 'box') {
       const box = current().boxes.find(item => item.id === dragAction.id); if (!box) return;
       if (dragAction.action === 'move') { box.x = Math.max(0, Math.min(1 - box.w, dragAction.before.x + dx)); box.y = Math.max(0, Math.min(1 - box.h, dragAction.before.y + dy)); }
       else { box.w = Math.max(.08, Math.min(1 - box.x, dragAction.before.w + dx)); box.h = Math.max(.06, Math.min(1 - box.y, dragAction.before.h + dy)); }
@@ -291,7 +424,10 @@
     if (activeStroke) { activeStroke = null; renderCanvas(); save(); lastSnapshot = capture(); }
   }
   canvas.addEventListener('pointerup', endPointer); canvas.addEventListener('pointercancel', endPointer);
-  layer.addEventListener('pointerup', () => { if (dragAction) { dragAction = null; save(); lastSnapshot = capture(); } });
+  layer.addEventListener('pointerup', () => { if (dragAction) {
+    if (dragAction.type === 'activity-card') { const a = current().activities.find(item => item.id === dragAction.id); if (a?.type === 'sorting') { const item = a.items.find(row => row.id === dragAction.itemId); if (item) { const target = item.y < .68 ? Math.min(a.categories.length - 1, Math.floor(item.x * a.categories.length)) : -1; item.category = target; if (target >= 0) { const peers = a.items.filter(row => row.id !== item.id && row.category === target).length; item.x = (target + .08) / a.categories.length; item.y = Math.min(.58, .18 + peers * .11); } else item.y = Math.max(.78, item.y); renderActivities(); } } }
+    dragAction = null; save(); lastSnapshot = capture();
+  } });
   layer.addEventListener('pointercancel', () => { if (dragAction) { dragAction = null; save(); lastSnapshot = capture(); } });
   function applyHistory(entry) { const board = boards.find(item => item.id === entry.boardId); if (!board) return; saveCurrent(); setSnapshot(board, entry.state); applyBoard(board.id); }
   $('undo').addEventListener('click', () => { clearTimeout(typingTimer); typingTimer = 0; if (typingBefore) { historyPush(typingBefore); typingBefore = null; } const index = undoStack.map(item => item.boardId).lastIndexOf(currentId); if (index < 0) return; const [entry] = undoStack.splice(index, 1); redoStack.push({ boardId: currentId, state: capture() }); applyHistory(entry); });

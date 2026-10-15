@@ -30,6 +30,16 @@
     <button id="undo" type="button" title="Undo" aria-label="Undo" disabled>↶</button>
     <button id="redo" type="button" title="Redo" aria-label="Redo" disabled>↷</button>
   </div>
+  <details class="activities-menu" id="activities-menu">
+    <summary>Activities</summary>
+    <div class="activities-list" aria-label="Classroom activities">
+      <button type="button" data-activity="words">Movable Words</button>
+      <button type="button" data-activity="sorting">Sorting</button>
+      <button type="button" data-activity="numberline">Number Line</button>
+      <button type="button" data-activity="random">Random Numbers</button>
+      <button type="button" data-activity="fraction">Fraction Bars</button>
+    </div>
+  </details>
   <span id="status" role="status" aria-live="polite">Ready</span>
   <div class="actions">
     <details class="more">
@@ -68,5 +78,6 @@
 <dialog id="restore-dialog" aria-labelledby="restore-title"><form method="dialog"><h2 id="restore-title">Restore the previous board?</h2><p>This will replace the current board. You can restore it again to reverse the change.</p><div class="dialog-actions"><button value="cancel" autofocus>Cancel</button><button value="restore" class="confirm">Restore board</button></div></form></dialog>
 <dialog id="delete-dialog" aria-labelledby="delete-title"><form method="dialog"><h2 id="delete-title">Delete this board?</h2><p>This board and its writing will be removed.</p><div class="dialog-actions"><button value="cancel" autofocus>Cancel</button><button value="delete" class="confirm">Delete board</button></div></form></dialog>
 <dialog id="fresh-dialog" aria-labelledby="fresh-title"><form method="dialog"><h2 id="fresh-title">Start a fresh session?</h2><p>This clears every board, drawing and the timer from this browser.</p><div class="dialog-actions"><button value="cancel" autofocus>Cancel</button><button value="fresh" class="confirm">Start fresh</button></div></form></dialog>
+<dialog id="activity-dialog" aria-labelledby="activity-title"><form id="activity-form"><h2 id="activity-title">New activity</h2><div id="activity-fields"></div><p id="activity-error" role="status" class="activity-error"></p><div class="dialog-actions"><button type="button" id="activity-cancel">Cancel</button><button type="submit" class="confirm">Create</button></div></form></dialog>
 </body>
 </html>
