@@ -12,24 +12,23 @@
 <body>
 <header class="toolbar" aria-label="Board controls">
   <a class="home" href="../" aria-label="Home" title="Home">⌂</a>
-  <div class="modes" role="group" aria-label="Board mode">
-    <button id="text-mode" class="mode active" type="button" aria-pressed="true">Text</button>
-    <button id="pen-mode" class="mode" type="button" aria-pressed="false">Pen</button>
-    <button id="eraser-mode" class="mode" type="button" aria-pressed="false">Eraser</button>
-  </div>
+  <label class="mode-label"><span class="sr-only">Board tool</span><select id="mode" aria-label="Board tool"><option value="text">Text</option><option value="select">Select / move</option><option value="pen">Pen</option><option value="highlight">Highlighter</option><option value="eraser">Eraser</option><option value="shape">Shape</option><option value="box">Text box</option></select></label>
   <div id="text-tools" class="tools" role="group" aria-label="Text formatting">
     <button id="bold" type="button" title="Bold" aria-label="Bold" aria-pressed="false"><b>B</b></button>
     <button id="underline" type="button" title="Underline" aria-label="Underline" aria-pressed="false"><u>U</u></button>
     <label class="colour" title="Text colour"><span class="sr-only">Text colour</span><input id="colour" type="color" value="#202124" aria-label="Text colour"></label>
     <label><span class="sr-only">Font size</span><select id="size" aria-label="Font size"><option value="24">24 px</option><option value="32">32 px</option><option value="40" selected>40 px</option><option value="48">48 px</option><option value="56">56 px</option><option value="64">64 px</option><option value="72">72 px</option><option value="96">96 px</option></select></label>
+    <label><span class="sr-only">Text alignment</span><select id="alignment" aria-label="Text alignment"><option value="left">Align left</option><option value="center">Centre</option><option value="right">Align right</option></select></label>
+    <label><span class="sr-only">List formatting</span><select id="list-format" aria-label="List formatting"><option value="">Lists</option><option value="bullet">Bullets</option><option value="number">Numbering</option></select></label>
   </div>
-  <div id="pen-tools" class="tools pen-tools" role="group" aria-label="Pen settings" hidden>
-    <label title="Pen colour"><span class="sr-only">Pen colour</span><select id="pen-colour" aria-label="Pen colour"><option value="#202124">Black</option><option value="#2563eb">Blue</option><option value="#dc2626">Red</option><option value="#15803d">Green</option></select></label>
-    <label title="Pen thickness"><span class="sr-only">Pen thickness</span><select id="pen-width" aria-label="Pen thickness"><option value="3">Fine</option><option value="6" selected>Medium</option><option value="11">Thick</option></select></label>
+  <div id="draw-tools" class="tools draw-tools" role="group" aria-label="Drawing settings" hidden>
+    <label title="Drawing colour"><span class="sr-only">Drawing colour</span><select id="draw-colour" aria-label="Drawing colour"></select></label>
+    <label title="Drawing thickness"><span class="sr-only">Drawing thickness</span><select id="draw-width" aria-label="Drawing thickness"><option value="3">Fine</option><option value="6" selected>Medium</option><option value="11">Thick</option><option value="18">Extra thick</option></select></label>
   </div>
-  <div class="history-tools" role="group" aria-label="Drawing history">
-    <button id="undo" type="button" title="Undo drawing" aria-label="Undo" disabled>↶</button>
-    <button id="redo" type="button" title="Redo drawing" aria-label="Redo" disabled>↷</button>
+  <label id="shape-tools" class="shape-tools" hidden><span class="sr-only">Shape type</span><select id="shape-type" aria-label="Shape type"><option value="line">Straight line</option><option value="arrow">Arrow</option><option value="ellipse">Circle / ellipse</option><option value="rect">Rectangle</option></select></label>
+  <div class="history-tools" role="group" aria-label="Board history">
+    <button id="undo" type="button" title="Undo" aria-label="Undo" disabled>↶</button>
+    <button id="redo" type="button" title="Redo" aria-label="Redo" disabled>↷</button>
   </div>
   <span id="status" role="status" aria-live="polite">Ready</span>
   <div class="actions">
@@ -57,10 +56,11 @@
   <div class="signature" aria-label="Mr Capas">Mr <span>Capas</span><i aria-hidden="true">.</i></div>
 </header>
 <main id="board" class="background-plain" aria-label="Classroom board">
-  <canvas id="ink" aria-label="Handwriting layer"></canvas>
+  <canvas id="ink" aria-label="Drawing layer"></canvas>
   <div id="date" class="editable date" contenteditable="true" role="textbox" aria-label="Date" spellcheck="false"></div>
   <div id="subject" class="editable subject" contenteditable="true" role="textbox" aria-label="Lesson title or subject" data-placeholder="Lesson title" spellcheck="true"></div>
   <div id="writing" class="editable writing" contenteditable="true" role="textbox" aria-label="Main writing area" aria-multiline="true" data-placeholder="Write here…" spellcheck="true"></div>
+  <div id="object-layer" aria-label="Board objects"></div>
 </main>
 <nav id="board-tabs" class="board-tabs" aria-label="Lesson boards"></nav>
 <aside id="timer-display" class="timer-display" hidden aria-live="polite"><span id="timer-value">05:00</span><button id="timer-hide" type="button" aria-label="Hide timer">×</button></aside>
