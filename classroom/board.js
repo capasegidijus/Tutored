@@ -50,7 +50,7 @@
   function normalizeActivity(source) {
     if (!source || !['words', 'sorting', 'numberline', 'random', 'fraction'].includes(source.type)) return null;
     const n = (v, fallback, min = 0, max = 1) => Number.isFinite(Number(v)) ? Math.max(min, Math.min(max, Number(v))) : fallback;
-    const defaults = { words: [.55, .38], sorting: [.76, .5], numberline: [.76, .34], random: [.4, .38], fraction: [.62, .36] }[source.type]; const x = n(source.x, .08, 0, .78), y = n(source.y, .12, 0, .8); const legacySize = source.resized !== true && Number(source.w) === .55 && Number(source.h) === .3; const a = { id: typeof source.id === 'string' ? source.id : uid(), type: source.type, x, y, w: n(legacySize ? defaults[0] : source.w, defaults[0], .22, 1 - x), h: n(legacySize ? defaults[1] : source.h, defaults[1], .18, 1 - y), resized: Boolean(source.resized) };
+    const defaults = { words: [.64, .48], sorting: [.80, .62], numberline: [.82, .45], random: [.46, .46], fraction: [.68, .48] }[source.type]; const x = n(source.x, .08, 0, .78), y = n(source.y, .12, 0, .8); const legacySize = source.resized !== true && Number(source.w) === .55 && Number(source.h) === .3; const a = { id: typeof source.id === 'string' ? source.id : uid(), type: source.type, x, y, w: n(legacySize ? defaults[0] : source.w, defaults[0], .22, 1 - x), h: n(legacySize ? defaults[1] : source.h, defaults[1], .18, 1 - y), resized: Boolean(source.resized) };
     if (source.type === 'words') a.items = (Array.isArray(source.items) ? source.items : []).slice(0, 60).map((it, i) => ({ id: typeof it.id === 'string' ? it.id : uid(), text: String(it.text || '').slice(0, 120), x: n(it.x, .03 + (i % 4) * .23), y: n(it.y, .16 + Math.floor(i / 4) * .23) }));
     if (source.type === 'sorting') {
       a.categories = (Array.isArray(source.categories) ? source.categories : []).slice(0, 8).map(v => String(v).slice(0, 40));
@@ -209,7 +209,7 @@
         const itemDelete = event.target.closest('.card-remove'); if (itemDelete) { const card = itemDelete.closest('.word-card'); historyPush(); a.items = a.items.filter(item => item.id !== card.dataset.itemId); renderActivities(); save(); lastSnapshot = capture(); return; }
         const action = event.target.closest('[data-action]')?.dataset.action;
         if (action === 'shuffle') { historyPush(); a.items.forEach(item => { item.x = Math.random() * .78; item.y = Math.random() * .72; }); renderActivities(); save(); lastSnapshot = capture(); }
-        if (action === 'reset') { historyPush(); a.items.forEach((item, i) => { item.category = -1; item.x = .02 + (i % 5) * .19; item.y = Math.min(.95, .78 + Math.floor(i / 5) * .11); }); renderActivities(); save(); lastSnapshot = capture(); }
+        if (action === 'reset') { historyPush(); a.items.forEach((item, i) => { item.category = -1; item.x = .02 + (i % 5) * .19; item.y = Math.min(.95, .70 + Math.floor(i / 5) * .10); }); renderActivities(); save(); lastSnapshot = capture(); }
         if (action === 'labels') { historyPush(); a.labels = !a.labels; renderActivities(); save(); lastSnapshot = capture(); }
         if (action === 'generate') { historyPush(); a.result = Array.from({ length: a.two ? 2 : 1 }, () => Math.floor(Math.random() * (a.max - a.min + 1)) + a.min); renderActivities(); save(); lastSnapshot = capture(); }
         if (event.target.matches('.fraction-cell')) { historyPush(); const i = Number(event.target.dataset.cell); a.shaded[i] = !a.shaded[i]; renderActivities(); save(); lastSnapshot = capture(); }
@@ -233,7 +233,7 @@
   document.querySelectorAll('[data-activity]').forEach(button => button.addEventListener('click', () => { $('activities-menu').open = false; openActivityForm(button.dataset.activity); }));
   $('activity-form').addEventListener('submit', event => {
     event.preventDefault(); $('activity-error').textContent = '';
-    const activities = current().activities; const initialSize = { words: [.55, .38], sorting: [.76, .5], numberline: [.76, .34], random: [.4, .38], fraction: [.62, .36] }[activityType]; const a = { id: uid(), type: activityType, x: .08 + Math.min(.12, activities.length * .025), y: .12 + Math.min(.18, activities.length * .035), w: initialSize[0], h: initialSize[1] };
+    const activities = current().activities; const initialSize = { words: [.64, .48], sorting: [.80, .62], numberline: [.82, .45], random: [.46, .46], fraction: [.68, .48] }[activityType]; const a = { id: uid(), type: activityType, x: .08 + Math.min(.12, activities.length * .025), y: .12 + Math.min(.18, activities.length * .035), w: initialSize[0], h: initialSize[1] };
     const csv = value => value.split(',').map(item => item.trim()).filter(Boolean);
     if (activityType === 'words') {
       const value = $('activity-text').value.trim(); if (!value) { $('activity-error').textContent = 'Enter a word or sentence first.'; return; }
@@ -243,7 +243,7 @@
     if (activityType === 'sorting') {
       a.categories = csv($('activity-categories').value).slice(0, 8); const items = $('activity-items').value.trim().split(/\s+/).filter(Boolean).slice(0, 60);
       if (a.categories.length < 2 || !items.length) { $('activity-error').textContent = 'Add at least two categories and one card.'; return; }
-      a.type = 'sorting'; a.items = items.map((text, i) => ({ id: uid(), text, category: -1, x: .02 + (i % 5) * .19, y: Math.min(.95, .78 + Math.floor(i / 5) * .11) }));
+      a.type = 'sorting'; a.items = items.map((text, i) => ({ id: uid(), text, category: -1, x: .02 + (i % 5) * .19, y: Math.min(.95, .70 + Math.floor(i / 5) * .10) }));
     }
     if (activityType === 'numberline') {
       a.min = Number($('activity-min').value); a.max = Number($('activity-max').value); a.step = Number($('activity-step').value); a.labels = $('activity-labels').checked; a.marker = 0;
@@ -425,7 +425,7 @@
   }
   canvas.addEventListener('pointerup', endPointer); canvas.addEventListener('pointercancel', endPointer);
   layer.addEventListener('pointerup', () => { if (dragAction) {
-    if (dragAction.type === 'activity-card') { const a = current().activities.find(item => item.id === dragAction.id); if (a?.type === 'sorting') { const item = a.items.find(row => row.id === dragAction.itemId); if (item) { const target = item.y < .68 ? Math.min(a.categories.length - 1, Math.floor(item.x * a.categories.length)) : -1; item.category = target; if (target >= 0) { const peers = a.items.filter(row => row.id !== item.id && row.category === target).length; item.x = (target + .08) / a.categories.length; item.y = Math.min(.58, .18 + peers * .11); } else item.y = Math.max(.78, item.y); renderActivities(); } } }
+    if (dragAction.type === 'activity-card') { const a = current().activities.find(item => item.id === dragAction.id); if (a?.type === 'sorting') { const item = a.items.find(row => row.id === dragAction.itemId); if (item) { const target = item.y < .68 ? Math.min(a.categories.length - 1, Math.floor(item.x * a.categories.length)) : -1; item.category = target; if (target >= 0) { const peers = a.items.filter(row => row.id !== item.id && row.category === target).length; item.x = (target + .08) / a.categories.length; item.y = Math.min(.58, .18 + peers * .11); } else item.y = Math.max(.70, item.y); renderActivities(); } } }
     dragAction = null; save(); lastSnapshot = capture();
   } });
   layer.addEventListener('pointercancel', () => { if (dragAction) { dragAction = null; save(); lastSnapshot = capture(); } });
