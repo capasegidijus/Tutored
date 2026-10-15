@@ -4,28 +4,69 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="A simple classroom writing board. No accounts or setup.">
+<meta name="theme-color" content="#ffffff">
 <title>Classroom Board</title>
 <link rel="stylesheet" href="board.css">
 <script src="board.js" defer></script>
 </head>
 <body>
 <header class="toolbar" aria-label="Board controls">
-<a class="home" href="../" aria-label="Home" title="Home">⌂</a>
-<div class="tools" role="group" aria-label="Text formatting">
-<button id="bold" type="button" title="Bold (Ctrl or Command B)" aria-label="Bold" aria-pressed="false"><b>B</b></button>
-<button id="underline" type="button" title="Underline (Ctrl or Command U)" aria-label="Underline" aria-pressed="false"><u>U</u></button>
-<label class="colour" title="Text colour"><span class="sr-only">Text colour</span><input id="colour" type="color" value="#202124" aria-label="Text colour"></label>
-<label class="size-label"><span class="sr-only">Font size</span><select id="size" aria-label="Font size"><option value="24">24 px</option><option value="32">32 px</option><option value="40" selected>40 px</option><option value="48">48 px</option><option value="56">56 px</option><option value="64">64 px</option><option value="72">72 px</option><option value="96">96 px</option></select></label>
-</div>
-<span id="status" role="status" aria-live="polite">Ready</span>
-<div class="actions"><button id="restore" type="button" disabled title="Return to the board saved before the last clear">Restore board</button><button id="clear" type="button">Clear</button><button id="fullscreen" type="button" aria-pressed="false">Fullscreen</button></div>
+  <a class="home" href="../" aria-label="Home" title="Home">⌂</a>
+  <div class="modes" role="group" aria-label="Board mode">
+    <button id="text-mode" class="mode active" type="button" aria-pressed="true">Text</button>
+    <button id="pen-mode" class="mode" type="button" aria-pressed="false">Pen</button>
+    <button id="eraser-mode" class="mode" type="button" aria-pressed="false">Eraser</button>
+  </div>
+  <div id="text-tools" class="tools" role="group" aria-label="Text formatting">
+    <button id="bold" type="button" title="Bold" aria-label="Bold" aria-pressed="false"><b>B</b></button>
+    <button id="underline" type="button" title="Underline" aria-label="Underline" aria-pressed="false"><u>U</u></button>
+    <label class="colour" title="Text colour"><span class="sr-only">Text colour</span><input id="colour" type="color" value="#202124" aria-label="Text colour"></label>
+    <label><span class="sr-only">Font size</span><select id="size" aria-label="Font size"><option value="24">24 px</option><option value="32">32 px</option><option value="40" selected>40 px</option><option value="48">48 px</option><option value="56">56 px</option><option value="64">64 px</option><option value="72">72 px</option><option value="96">96 px</option></select></label>
+  </div>
+  <div id="pen-tools" class="tools pen-tools" role="group" aria-label="Pen settings" hidden>
+    <label title="Pen colour"><span class="sr-only">Pen colour</span><select id="pen-colour" aria-label="Pen colour"><option value="#202124">Black</option><option value="#2563eb">Blue</option><option value="#dc2626">Red</option><option value="#15803d">Green</option></select></label>
+    <label title="Pen thickness"><span class="sr-only">Pen thickness</span><select id="pen-width" aria-label="Pen thickness"><option value="3">Fine</option><option value="6" selected>Medium</option><option value="11">Thick</option></select></label>
+  </div>
+  <div class="history-tools" role="group" aria-label="Drawing history">
+    <button id="undo" type="button" title="Undo drawing" aria-label="Undo" disabled>↶</button>
+    <button id="redo" type="button" title="Redo drawing" aria-label="Redo" disabled>↷</button>
+  </div>
+  <span id="status" role="status" aria-live="polite">Ready</span>
+  <div class="actions">
+    <details class="more">
+      <summary aria-label="More board tools">More</summary>
+      <div class="more-menu" aria-label="More board tools">
+        <label>Background<select id="background" aria-label="Board background"><option value="plain">Plain</option><option value="lines">Handwriting lines</option><option value="grid">Square grid</option><option value="dots">Dotted grid</option></select></label>
+        <hr>
+        <button id="restore" class="fresh" type="button" disabled>Restore previous board</button>
+        <hr>
+        <div class="timer-settings">
+          <label>Timer<select id="timer-preset" aria-label="Timer duration"><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15">15 minutes</option><option value="custom">Custom</option></select></label>
+          <label id="custom-label" hidden>Minutes<input id="custom-minutes" type="number" min="1" max="180" value="3" inputmode="numeric"></label>
+          <label class="sound-option"><input id="timer-sound" type="checkbox"> Sound at the end</label>
+          <div class="timer-actions"><button id="timer-toggle" type="button">Start timer</button><button id="timer-reset" type="button">Reset</button></div>
+          <button id="timer-show" class="fresh" type="button" hidden>Show timer</button>
+        </div>
+        <hr>
+        <button id="fresh" class="fresh" type="button">Start fresh session</button>
+      </div>
+    </details>
+    <button id="clear" type="button">Clear board</button>
+    <button id="fullscreen" type="button" aria-pressed="false">Fullscreen</button>
+  </div>
+  <div class="signature" aria-label="Mr Capas">Mr <span>Capas</span><i aria-hidden="true">.</i></div>
 </header>
-<main id="board" aria-label="Classroom board">
-<div id="date" class="editable date" contenteditable="true" role="textbox" aria-label="Date" spellcheck="false"></div>
-<div id="subject" class="editable subject" contenteditable="true" role="textbox" aria-label="Lesson title or subject" data-placeholder="Lesson title" spellcheck="true"></div>
-<div id="writing" class="editable writing" contenteditable="true" role="textbox" aria-label="Main writing area" aria-multiline="true" data-placeholder="Write here…" spellcheck="true"></div>
+<main id="board" class="background-plain" aria-label="Classroom board">
+  <canvas id="ink" aria-label="Handwriting layer"></canvas>
+  <div id="date" class="editable date" contenteditable="true" role="textbox" aria-label="Date" spellcheck="false"></div>
+  <div id="subject" class="editable subject" contenteditable="true" role="textbox" aria-label="Lesson title or subject" data-placeholder="Lesson title" spellcheck="true"></div>
+  <div id="writing" class="editable writing" contenteditable="true" role="textbox" aria-label="Main writing area" aria-multiline="true" data-placeholder="Write here…" spellcheck="true"></div>
 </main>
-<dialog id="clear-dialog" aria-labelledby="clear-title"><form method="dialog"><h2 id="clear-title">Clear the board?</h2><p>The current board will be saved so you can restore it.</p><div class="dialog-actions"><button value="cancel" autofocus>Cancel</button><button value="clear" class="confirm">Clear board</button></div></form></dialog>
-<dialog id="restore-dialog" aria-labelledby="restore-title"><form method="dialog"><h2 id="restore-title">Restore the previous board?</h2><p>This will replace what is on the board now. You can use Restore board again to return to it.</p><div class="dialog-actions"><button value="cancel" autofocus>Cancel</button><button value="restore" class="confirm">Restore board</button></div></form></dialog>
+<nav id="board-tabs" class="board-tabs" aria-label="Lesson boards"></nav>
+<aside id="timer-display" class="timer-display" hidden aria-live="polite"><span id="timer-value">05:00</span><button id="timer-hide" type="button" aria-label="Hide timer">×</button></aside>
+<dialog id="clear-dialog" aria-labelledby="clear-title"><form method="dialog"><h2 id="clear-title">Clear this board?</h2><p>The board can be restored until you start a fresh session.</p><div class="dialog-actions"><button value="cancel" autofocus>Cancel</button><button value="clear" class="confirm">Clear board</button></div></form></dialog>
+<dialog id="restore-dialog" aria-labelledby="restore-title"><form method="dialog"><h2 id="restore-title">Restore the previous board?</h2><p>This will replace the current board. You can restore it again to reverse the change.</p><div class="dialog-actions"><button value="cancel" autofocus>Cancel</button><button value="restore" class="confirm">Restore board</button></div></form></dialog>
+<dialog id="delete-dialog" aria-labelledby="delete-title"><form method="dialog"><h2 id="delete-title">Delete this board?</h2><p>This board and its writing will be removed.</p><div class="dialog-actions"><button value="cancel" autofocus>Cancel</button><button value="delete" class="confirm">Delete board</button></div></form></dialog>
+<dialog id="fresh-dialog" aria-labelledby="fresh-title"><form method="dialog"><h2 id="fresh-title">Start a fresh session?</h2><p>This clears every board, drawing and the timer from this browser.</p><div class="dialog-actions"><button value="cancel" autofocus>Cancel</button><button value="fresh" class="confirm">Start fresh</button></div></form></dialog>
 </body>
 </html>
