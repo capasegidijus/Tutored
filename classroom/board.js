@@ -159,7 +159,7 @@
     for (const raw of current()?.activities || []) {
       const a = normalizeActivity(raw); if (!a) continue; Object.assign(raw, a);
       const el = document.createElement('section'); el.className = `activity activity-${a.type}`; el.dataset.activityId = a.id;
-      el.style.left = `${a.x * 100}%`; el.style.top = `${a.y * 100}%`;
+      el.style.left = `${a.x * 100}%`; el.style.top = `${a.y * 100}%`; el.style.width = `${a.w * 100}%`; el.style.height = `${a.h * 100}%`;
       const head = document.createElement('header'); head.className = 'activity-titlebar'; head.dataset.moveHandle = 'true'; addText(head, 'strong', 'activity-title', ({ words:'Movable Words', sorting:'Sorting', numberline:'Number Line', random:'Random Numbers', fraction:'Fraction Bars' })[a.type]);
       const remove = addText(head, 'button', 'activity-remove', '×'); remove.type = 'button'; remove.setAttribute('aria-label', 'Remove activity'); remove.title = 'Remove activity'; el.append(head);
       if (a.type === 'words') {
@@ -223,7 +223,7 @@
     const fieldsBox = $('activity-fields');
     const input = (id, label, value, attrs = '') => `<label class="activity-field">${label}<input id="${id}" value="${value}" ${attrs}></label>`;
     if (type === 'words') fieldsBox.innerHTML = `<label class="activity-field">Words or sentence<textarea id="activity-text" rows="3" placeholder="The little boy walked to school."></textarea></label><label class="activity-field">Cards<select id="activity-split"><option value="word">One card per word</option><option value="sentence">One card per sentence</option></select></label>`;
-    if (type === 'sorting') fieldsBox.innerHTML = `<label class="activity-field">Categories (separate with commas)<input id="activity-categories" value="Nouns, Verbs, Adjectives"></label><label class="activity-field">Sentence or words<textarea id="activity-items" rows="3" placeholder="The curious fox found a hidden den."></textarea><p class="activity-hint">Each word becomes its own card. Punctuation stays with the word.</p></label>`;
+    if (type === 'sorting') fieldsBox.innerHTML = `<label class="activity-field">Categories (separate with commas)<input id="activity-categories" value="Nouns, Verbs, Adjectives"></label><label class="activity-field">Sentence or words<textarea id="activity-items" rows="3" placeholder="The curious fox found a hidden den."></textarea></label><p class="activity-hint">Each word becomes its own card. Punctuation stays with the word.</p>`;
     if (type === 'numberline') fieldsBox.innerHTML = input('activity-min','Minimum','0','type="number"')+input('activity-max','Maximum','20','type="number"')+input('activity-step','Interval','1','type="number" min="0.001" step="any"')+`<label class="activity-field inline"><input id="activity-labels" type="checkbox" checked> Show number labels</label>`;
     if (type === 'random') fieldsBox.innerHTML = input('activity-min','Minimum','1','type="number"')+input('activity-max','Maximum','100','type="number"')+`<label class="activity-field inline"><input id="activity-two" type="checkbox"> Generate two numbers</label>`;
     if (type === 'fraction') fieldsBox.innerHTML = `<label class="activity-field">Equal parts<select id="activity-denominator">${[2,3,4,5,6,8,10].map(n=>`<option value="${n}" ${n===4?'selected':''}>${n} equal parts</option>`).join('')}</select></label>`;
@@ -395,7 +395,7 @@
     if (dragAction.type === 'activity-move') {
       const a = current().activities.find(item => item.id === dragAction.id); if (!a) return;
       a.x = Math.max(0, Math.min(1 - a.w, dragAction.before.x + (event.clientX - dragAction.start.x) / rect.width)); a.y = Math.max(0, Math.min(1 - a.h, dragAction.before.y + (event.clientY - dragAction.start.y) / rect.height));
-      const el = layer.querySelector(`[data-activity-id="${CSS.escape(a.id)}"]`); if (el) { el.style.left = `${a.x * 100}%`; el.style.top = `${a.y * 100}%`; }
+      const el = layer.querySelector(`[data-activity-id="${CSS.escape(a.id)}"]`); if (el) { el.style.left = `${a.x * 100}%`; el.style.top = `${a.y * 100}%`; el.style.width = `${a.w * 100}%`; el.style.height = `${a.h * 100}%`; }
     } else if (dragAction.type === 'activity-resize') { const a = current().activities.find(item => item.id === dragAction.id); if (!a) return; a.w = Math.max(.22, Math.min(1 - a.x, dragAction.before.w + (event.clientX - dragAction.start.x) / rect.width)); a.h = Math.max(.18, Math.min(1 - a.y, dragAction.before.h + (event.clientY - dragAction.start.y) / rect.height)); a.resized = true; const el = layer.querySelector(`[data-activity-id="${CSS.escape(a.id)}"]`); if (el) { el.style.width = `${a.w * 100}%`; el.style.height = `${a.h * 100}%`; } } else if (dragAction.type === 'activity-card') {
       const a = current().activities.find(item => item.id === dragAction.id), item = a?.items.find(row => row.id === dragAction.itemId); if (!item) return;
       const parent = layer.querySelector(`[data-activity-id="${CSS.escape(a.id)}"]`), w = parent.clientWidth, h = parent.clientHeight;
